@@ -514,7 +514,7 @@ if(Surfer::is_crawler()) {
 	$menu[] = Skin::build_submit_button(i18n::s('Login'), NULL, NULL, 'login_button');
 
 	// lost password?
-	$menu[] = Skin::build_link('users/password.php', i18n::s('Lost password'), 'span');
+	$menu[] = Skin::build_link('users/password.php', i18n::s('Lost password'), 'lost');
 
 	// insert the menu in the page
 	$main_column .= Skin::finalize_list($menu, 'menu_bar');
