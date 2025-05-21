@@ -1,0 +1,96 @@
+/* Variables */
+$tiny: 480px;
+$small: 576px;
+$medium: 768px;
+$large: 992px;
+$extra-large: 1200px;
+
+:root {
+  --primary: #2a4b3c;
+  --secondary: #3a6b4a;
+  --light: #8ba888;
+  --accent: #d4ca0b;
+  --bg: #f5f7f3;
+}
+
+/* Style de base - 2 colonnes par défaut */
+.yacs-parallax {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr); /* 2 colonnes par défaut */
+  gap: 1.5rem;
+  padding: 1.5rem;
+  max-width: 1400px;
+  margin: 0 auto;
+  background: var(--bg);
+}
+
+.card {
+  background: white;
+  border-radius: 8px;
+  overflow: hidden;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+  display: flex;
+  flex-direction: column;
+}
+
+/* Conteneur d'image centrée */
+.card-header {
+  position: relative;
+  height: 200px; /* Hauteur fixe */
+  display: flex;
+  justify-content: center; /* Centrage horizontal */
+  align-items: center; /* Centrage vertical */
+  overflow: hidden;
+  background: #f0f0f0; /* Fond de secours */
+}
+
+.card-header img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover; /* Couvre tout l'espace en conservant le ratio */
+  object-position: center; /* Centre l'image */
+  transition: transform 0.5s ease;
+}
+
+/* Styles du contenu */
+.card-header h3 {
+  position: absolute;
+  bottom: 0;
+  left: 0;
+  right: 0;
+  margin: 0;
+  padding: 1rem;
+  background: linear-gradient(to top, rgba(42,75,60,0.9), transparent);
+}
+
+.card-header h3 a {
+  color: white !important;
+  text-shadow: 1px 1px 3px rgba(0,0,0,0.5);
+}
+
+.card-content {
+  padding: 1.5rem;
+  flex-grow: 1;
+}
+
+.card-footer {
+  padding: 1rem;
+  text-align: center;
+}
+
+/* Responsive - Passage à 1 colonne en dessous de $medium */
+@media (max-width: $medium) {
+  .yacs-parallax {
+    grid-template-columns: 1fr;
+    padding: 1rem;
+  }
+  
+  .card-header {
+    height: 180px;
+  }
+}
+
+/* Effets au survol */
+.card:hover .card-header img {
+  transform: scale(1.05);
+}
