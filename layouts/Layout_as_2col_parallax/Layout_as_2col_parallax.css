@@ -1,0 +1,159 @@
+.yacs-forest-parallax,
+.forest-card,
+.card-header,
+.card-header img {
+  max-width: 100%;
+  box-sizing: border-box;
+}
+.yacs-forest-parallax {
+  --forest-primary: #2a4b3c;
+  --forest-secondary: #3a6b4a;
+  --forest-light: #8ba888;
+  --forest-accent: #d4ca0b;
+  --forest-bg: #f5f7f3;
+
+  display: grid;
+  grid-template-columns: 1fr; // mobile
+  gap: 2rem;
+  padding: 2rem;
+  background: var(--forest-bg);
+  max-width: 140rem;
+  margin-inline: auto;
+  box-sizing: border-box;
+  overflow-x: hidden;
+  position: relative;
+
+  @media (min-width: 768px) {
+    grid-template-columns: 1fr 1fr; // desktop
+  }
+
+  &::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background:
+      url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" opacity="0.03"><path fill="%232a4b3c" d="M30,10 Q50,5 70,20 T90,50 Q85,70 60,80 T10,60 Q5,40 30,10"/></svg>'),
+      linear-gradient(160deg, var(--forest-bg), #e8f1e5);
+    background-size: 20rem, cover;
+    z-index: 0;
+  }
+}
+
+// === Carte avec effet fade-in ===
+.forest-card {
+  position: relative;
+  z-index: 1;
+  background: white;
+  border-radius: 0.8rem;
+  overflow: hidden;
+  box-shadow: 0 0.4rem 1.2rem rgba(0, 0, 0, 0.1);
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  display: flex;
+  flex-direction: column;
+  font-size: 1.5rem;
+  line-height: 1.5;
+  letter-spacing: -0.01em;
+
+  // Fade-in initial
+  opacity: 0;
+  transform: translateY(2rem);
+  transition: opacity 0.6s ease, transform 0.6s ease;
+
+  &.is-visible {
+    opacity: 1;
+    transform: translateY(0);
+  }
+
+  &:hover {
+    transform: translateY(-0.5rem);
+    box-shadow: 0 0.8rem 2rem rgba(42, 75, 60, 0.15);
+  }
+}
+
+.card-header {
+  position: relative;
+  min-height: 16rem;
+  overflow: hidden;
+
+  img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    transition: transform 0.8s ease;
+    max-width: 100%;
+    height: auto;
+    display: block;
+  }
+
+  h3 {
+    position: absolute;
+    bottom: 0;
+    left: 0;
+    right: 0;
+    margin: 0;
+    padding: 0.75rem 1rem;
+    background: linear-gradient(to top, rgba(42,75,60,0.9), transparent);
+    font-size: 1.6rem;
+
+    a {
+      color: white !important;
+      text-shadow: 0.1rem 0.1rem 0.3rem rgba(0,0,0,0.5);
+      text-decoration: none;
+      font-weight: 600;
+    }
+  }
+
+  .forest-card:hover & img {
+    transform: scale(1.05);
+  }
+}
+
+.card-content {
+  padding: 0.8rem 1rem;
+  flex-grow: 1;
+  font-size: 1.4rem;
+  color: var(--forest-primary);
+}
+
+.card-footer {
+  text-align: center;
+  padding: 2rem 1rem;
+
+  a {
+    display: inline-block;
+    background-color: var(--forest-primary);
+    color: white !important;
+    padding: 1rem 1.6rem;
+    border-radius: 30px;
+    font-size: 1.4rem;
+    font-weight: 500;
+    text-decoration: none !important;
+    transition: background 0.3s ease, transform 0.2s ease;
+    white-space: normal;
+    text-align: center;
+
+    &:hover {
+      background-color: var(--forest-secondary);
+      transform: translateY(-2px);
+    }
+
+    strong {
+      font-weight: 600;
+    }
+  }
+}
+
+// Responsive tweaks
+@media (max-width: 600px) {
+  .card-footer a {
+    font-size: 1.2rem;
+  }
+
+  .card-footer a::before {
+    content: "→ En savoir plus : ";
+  }
+
+  .card-footer a strong {
+    display: none;
+  }
+}
