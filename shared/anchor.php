@@ -608,6 +608,9 @@ abstract class Anchor {
             // we return a array
             $og = array();
             
+            // sanity check
+            if(!count($this->item)) return $og;
+            
             // url
             $og[] = '<meta property="og:url" content="'.encode_field($this->get_permalink()).'" />';
             
