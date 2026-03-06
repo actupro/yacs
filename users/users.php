@@ -579,7 +579,7 @@ Class Users {
             
             $cols = array();
             while($col = SQL::fetch($result)) {
-                $cols[] = $col['COLUMN_NAME'];
+                $cols[] = $col['column_name'];
             }
             
             SQL::free($result);

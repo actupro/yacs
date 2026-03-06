@@ -454,25 +454,6 @@ Class Utf8 {
 	}
 
 	/**
-	 * transcode Unicode entities from decimal to hex
-	 *
-	 * This function is used in specific occasions, for example for better support
-	 * of Freemind Flash viewer.
-	 *
-	 * @param string a complex string using unicode entities
-	 * @return a transcoded string
-	 */
-	public static function to_hex($utf) {
-		global $context;
-
-		// transcode all entities from decimal to hexa
-		$text = preg_replace('/&#([0-9]+);/se', "'&#x'.dechex('$1').';'", $utf);
-
-		// job done
-		return $text;
-	}
-
-	/**
 	 * transcode to ISO 8859
 	 *
 	 * To be used only when there is no other alternative.
@@ -635,7 +616,7 @@ Class Utf8 {
 		$output = utf8::transcode($output);
 
 		// translate extended ISO8859-1 chars, if any, to utf-8
-		$output = utf8_encode($output);
+		$output = mb_convert_encoding($output, 'UTF-8', 'ISO-8859-1');
 
 		// return the translated string
 		return $output;
