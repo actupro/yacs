@@ -3495,7 +3495,7 @@ Class Articles {
 				."OR (expiry_date <= '".NULL_DATE."') OR (expiry_date > '".$context['now']."'))";
 
 		// how to compute the score for articles
-		$score = "(MATCH(title, source, introduction, overlay, description)"
+		$score = "(MATCH(title, source, introduction, description)"
 			." AGAINST('".SQL::escape($pattern)."' IN BOOLEAN MODE)"
 			."/SQRT(GREATEST(1.1, DATEDIFF(NOW(), edit_date))))";
 
