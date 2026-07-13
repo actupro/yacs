@@ -21,9 +21,9 @@
  * - associates and editors can do what they want
  *
  * Accepted calls:
- * - edit.php?anchor=&lt;type&gt;:&lt;id&gt;	add a new location for the anchor
- * - edit.php/&lt;id&gt;					modify an existing location
- * - edit.php?id=&lt;id&gt; 			modify an existing location
+ * - edit.php?anchor=<type>:<id>	add a new location for the anchor
+ * - edit.php/<id>					modify an existing location
+ * - edit.php?id=<id> 			modify an existing location
  *
  * If the anchor for this item specifies a specific skin (option keyword '[code]skin_xyz[/code]'),
  * or a specific variant (option keyword '[code]variant_xyz[/code]'), they are used instead default values.
@@ -194,7 +194,7 @@ elseif(isset($item['id']) && ($item['edit_id'] != Surfer::get_id())
 
 	}
 
-// display the form on GET
+ // display the form on GET
 } else
 	$with_form = TRUE;
 
@@ -227,36 +227,65 @@ if($with_form) {
 	$label = i18n::s('Place name');
 	$input = '<input type="text" name="geo_place_name" id="geo_place_name" size="40" value="'.encode_field($item['geo_place_name']).'" />';
 
-	// geocoding based on Google service
-	if(isset($context['google_api_key']) && $context['google_api_key']) {
+	// add a geocode button that uses Nominatim and shows a Leaflet preview
+	$encode_label = i18n::s('Encode this address');
+	$input .= ' <button type="button" id="encode" class="yacs_button">'.encode_field($encode_label).'</button>'."\n";
 
-		// encode on click
-		$input .= '<button type="button" id="encode" onclick="lookupAddress($(\'#geo_place_name\').val()); return false;">'.encode_field(i18n::s('Encode this address')).'</button>'."\n";
-		
-		Page::defer_script("http://maps.google.com/maps?file=api&amp;v=3&amp;key=".$context['google_api_key']);
-			
-		Page::insert_script(
-			'var geocoder = null;'."\n"
-			.'function lookupAddress(address) {'."\n"
-			.'	if(!geocoder) {'."\n"
-			.'		geocoder = new google.maps.Geocoder();'."\n"
-			.'	}'."\n"
-			.'	if(geocoder) {'."\n"
-			.'		geocoder.geocode( { "address":container.geo_place_name.value},'."\n"
-			.'			function(point,status) {'."\n"
-			.'				if (!point) {'."\n"
-			.'					alert("'.i18n::s('This address has not been found').'");'."\n"
-			.'				} else {'."\n"
-			.'					$(\'#geo_position\').val( point[0].geometry.location.lat() + ", " + point[0].geometry.location.lng() );'."\n"
-			.'					alert("'.i18n::s('This address has been encoded as').'\n" + point[0].geometry.location.lat() + ", " +  point[0].geometry.location.lat());'."\n"
-			.'				}'."\n"
-			.'			}'."\n"
-			.'		)'."\n"
-			.'	}'."\n"
-			.'}'."\n"
-			);
+	// ensure Leaflet assets are referenced (bare paths, resolved from included/leaflet/)
+	Page::load_style('included/leaflet/leaflet.css');
+	Page::defer_script('included/leaflet/leaflet.js');
 
-	}
+	// insert the JS to perform client-side geocoding via Nominatim and show a Leaflet preview
+	// localize strings for JS
+	$js_searching = json_encode(i18n::s('Searching...'));
+	$js_not_found = json_encode(i18n::s('This address has not been found'));
+	$js_encoded = json_encode(i18n::s('This address has been encoded as'));
+	$js_no_address = json_encode(i18n::s('Please enter an address'));
+	$js_encode_label = json_encode(i18n::s('Encode this address'));
+
+	Page::insert_script(
+		// use jQuery if available; otherwise fallback to DOMContentLoaded
+		'jQuery(function($){'."\n"
+		.'  $("#encode").on("click", function(){'."\n"
+		.'    var btn = $(this);'."\n"
+		.'    var address = $.trim($("#geo_place_name").val() || "");'."\n"
+		.'    if(!address) { alert('.$js_no_address.'); return; }'."\n"
+		.'    btn.prop("disabled", true).text('.$js_searching.');'."\n"
+		.'    var url = "https://nominatim.openstreetmap.org/search?format=json&limit=5&addressdetails=1&q=" + encodeURIComponent(address);'."\n"
+		.'    fetch(url, { headers: { "Accept": "application/json" } })'."\n"
+		.'      .then(function(res){ if(!res.ok) throw new Error("HTTP " + res.status); return res.json(); })'."\n"
+		.'      .then(function(json){'."\n"
+		.'        btn.prop("disabled", false).text('.$js_encode_label.');'."\n"
+		.'        if(!json || json.length === 0) { alert('.$js_not_found.'); return; }'."\n"
+		.'        var r = json[0];'."\n"
+		.'        var lat = r.lat, lon = r.lon;'."\n"
+		.'        $("#geo_position").val(lat + ", " + lon);'."\n"
+		.'        alert('.$js_encoded.' + "\\n" + lat + ", " + lon);'."\n"
+		.'        // preview map'."\n"
+		.'        var preview = document.getElementById("location_preview_map");'."\n"
+		.'        if(preview) {'."\n"
+		.'          preview.style.display = "block";'."\n"
+		.'          try {'."\n"
+		.'            if(!preview._leaflet_map) {'."\n"
+		.'              preview._leaflet_map = L.map(preview).setView([lat, lon], 15);'."\n"
+		.'              L.tileLayer("https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png", {'."\n"
+		.'                 attribution: \'&copy; <a href=\"https://www.openstreetmap.org/copyright\">OpenStreetMap</a> contributors\''."\n"
+		.'              }).addTo(preview._leaflet_map);'."\n"
+		.'              preview._leaflet_marker = L.marker([lat, lon]).addTo(preview._leaflet_map);'."\n"
+		.'            } else {'."\n"
+		.'              preview._leaflet_map.setView([lat, lon], 15);'."\n"
+		.'              preview._leaflet_marker.setLatLng([lat, lon]);'."\n"
+		.'            }'."\n"
+		.'          } catch(e) { console.warn(e); }'."\n"
+		.'        }'."\n"
+		.'      })'."\n"
+		.'      .catch(function(err){'."\n"
+		.'        btn.prop("disabled", false).text('.$js_encode_label.');'."\n"
+		.'        alert("Geocoding error: " + err.message);'."\n"
+		.'      });'."\n"
+		.'  });'."\n"
+		.'});'."\n"
+	);
 
 	$hint = i18n::s('Street address, city, country');
 	$fields[] = array($label, $input, $hint);
@@ -266,6 +295,12 @@ if($with_form) {
 	$input = '<input type="text" id="geo_position" name="geo_position" size="40" value="'.encode_field($item['geo_position']).'" />';
 	$hint = i18n::s('Latitude, Longitude -- west longitudes and south latitudes are negative');
 	$fields[] = array($label, $input, $hint);
+
+	// Map preview (hidden until an address is geocoded)
+	$label = i18n::s('Map preview');
+	$preview_label = encode_field(i18n::s('Location preview'));
+	$input = '<div id="location_preview_map" style="width:100%;height:220px;display:none;" role="region" aria-label="'.$preview_label.'"></div>';
+	$fields[] = array($label, $input);
 
 	// geo country
 	$label = i18n::s('Country');
@@ -331,11 +366,12 @@ if($with_form) {
 		.'<li>'.Skin::build_link(i18n::s('http://www.travelgis.com/geocode/Default.aspx'), i18n::s('Free Geocoding Service for 22 Countries'), 'external').'</li>'
 		.'</ul>'
 		.'<p>'.sprintf(i18n::s('%s and %s are available to enhance text rendering.'), Skin::build_link('codes/', i18n::s('YACS codes'), 'open'), Skin::build_link('smileys/', i18n::s('smileys'), 'open')).'</p>';
+
 	$context['components']['boxes'] = Skin::build_box(i18n::s('Help'), $help, 'boxes', 'help');
 
 }
 
-// render the skin
+ // render the skin
 render_skin();
 
 ?>

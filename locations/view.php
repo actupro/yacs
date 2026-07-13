@@ -92,50 +92,53 @@ if(!isset($item['id'])) {
 	// geo position
 	if($item['geo_position']) {
 
-		// a place holder for the dynamic map
-		$context['text'] .= '<p>'.sprintf(i18n::s('Geographical coordinates: %s'), $item['geo_position'])."</p>\n"
-			.'<div id="map" style="border: 1px solid #979797; background-color: #e5e3df; width: 500px; height: 300px; margin-right: auto; margin-top: 2em; margin-bottom: 2em">'."\n"
-			.'	<div style="padding: 1em; color: gray">'.i18n::s('Loading...').'</div>'."\n"
-			.'</div>'."\n";
+		$context['text'] .= '<p>'.sprintf(i18n::s('Geographical coordinates: %s'), $item['geo_position'])."</p>\n";
 
-		// ensure we have split coordinates
-		if(!$item['latitude'] || !$item['longitude'])
-			list($item['latitude'], $item['longitude']) = preg_split('/[\s,;]+/', $item['geo_position']);
+		if(defined('MAP_PROVIDER') && MAP_PROVIDER === 'leaflet') {
 
-		// link to anchor page
-		$description = '';
-		if($anchor = Anchors::get($item['anchor']))
-			$description .= Skin::build_link($anchor->get_url(), $anchor->get_title());
+			$context['text'] .= Locations::map(array($item), 10);
 
-		// item type
-		if(strpos($item['anchor'], 'user:') == 0)
-			$type = 'user';
-		else
-			$type = 'other';
+		} else {
 
-		// do the job
-		Page::defer_script('http://maps.google.com/maps/api/js?v=3&amp;sensor=false');
-		Page::insert_script(
-			'var point = new google.maps.LatLng(parseFloat("'.$item['latitude'].'"), parseFloat("'.$item['longitude'].'"));'."\n"
-			."\n"
-			.'var mapOptions = {'."\n"
-			.'	zoom: 10,'."\n"
-			.'	center: point,'."\n"
-			.'	mapTypeId: google.maps.MapTypeId.ROADMAP'."\n"
-			.'};'."\n"
-			.'var map = new google.maps.Map($("#map")[0], mapOptions);'."\n"
-			.'	var marker = new google.maps.Marker({ position: point, map: map });'."\n"
-			.'	var infoWindow = new google.maps.InfoWindow();'."\n"
-			.'google.maps.event.addDomListener(marker, "click", function() {'."\n"
-			.'	infoWindow.setContent("'.addcslashes($description, '\'\\"'."\n\r").'");'."\n"
-			.'	infoWindow.open(map, marker);'."\n"
-			.'	});'."\n"
-			.'$("body").bind("yacs", function(e) {'."\n"
-			.'	google.maps.event.trigger(map, "resize");'."\n"
-			.'	map.setZoom( map.getZoom() );'."\n"
-			.'	map.setCenter(point);'."\n"
-			.'});'."\n"
-			);
+			// a place holder for the dynamic map
+			$context['text'] .= '<div id="map" style="border: 1px solid #979797; background-color: #e5e3df; width: 500px; height: 300px; margin-right: auto; margin-top: 2em; margin-bottom: 2em">'."\n"
+				.'	<div style="padding: 1em; color: gray">'.i18n::s('Loading...').'</div>'."\n"
+				.'</div>'."\n";
+
+			// ensure we have split coordinates
+			if(!$item['latitude'] || !$item['longitude'])
+				list($item['latitude'], $item['longitude']) = preg_split('/[\s,;]+/', $item['geo_position']);
+
+			// link to anchor page
+			$description = '';
+			if($anchor = Anchors::get($item['anchor']))
+				$description .= Skin::build_link($anchor->get_url(), $anchor->get_title());
+
+			// do the job
+			Page::defer_script('http://maps.google.com/maps/api/js?v=3&amp;sensor=false');
+			Page::insert_script(
+				'var point = new google.maps.LatLng(parseFloat("'.$item['latitude'].'"), parseFloat("'.$item['longitude'].'"));'."\n"
+				."\n"
+				.'var mapOptions = {'."\n"
+				.'	zoom: 10,'."\n"
+				.'	center: point,'."\n"
+				.'	mapTypeId: google.maps.MapTypeId.ROADMAP'."\n"
+				.'};'."\n"
+				.'var map = new google.maps.Map($("#map")[0], mapOptions);'."\n"
+				.'	var marker = new google.maps.Marker({ position: point, map: map });'."\n"
+				.'	var infoWindow = new google.maps.InfoWindow();'."\n"
+				.'google.maps.event.addDomListener(marker, "click", function() {'."\n"
+				.'	infoWindow.setContent("'.addcslashes($description, '\'\\"'."\n\r").'");'."\n"
+				.'	infoWindow.open(map, marker);'."\n"
+				.'	});'."\n"
+				.'$("body").bind("yacs", function(e) {'."\n"
+				.'	google.maps.event.trigger(map, "resize");'."\n"
+				.'	map.setZoom( map.getZoom() );'."\n"
+				.'	map.setCenter(point);'."\n"
+				.'});'."\n"
+				);
+
+		}
 
 	}
 

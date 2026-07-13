@@ -84,8 +84,7 @@ class Code_Location extends Code {
 
            }
 
-           // map on Google
-           $output = Locations::map_on_google(array($item));
+           $output = Locations::map(array($item));
            return $output;
 
    }
@@ -123,8 +122,7 @@ class Code_Location extends Code {
                    }
            }
 
-           // integrate with google maps
-           $output = Locations::map_on_google($items);
+           $output = Locations::map($items);
            return $output;
 
     }

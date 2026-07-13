@@ -17,6 +17,10 @@
  * @license http://www.gnu.org/copyleft/lesser.txt GNU Lesser General Public License
  */
 
+// skins may define MAP_PROVIDER ('leaflet' or 'google') to select the mapping engine
+if(!defined('MAP_PROVIDER'))
+	define('MAP_PROVIDER', 'leaflet');
+
 Class Locations {
 
 	/**
@@ -318,24 +322,40 @@ Class Locations {
 	 *
 	 * - other - locations/edit.php?id=123 or locations/edit.php/123 or location-edit/123
 	 *
-	 * @param int the id of the location to handle
-	 * @param string the expected action ('view', 'print', 'edit', 'delete', ...)
-	 * @param string additional data, such as file name, if any
-	 * @return string a normalized reference
+	 * Build a URL for a location object.
 	 *
-	 * @see control/configure.php
+	 * @param mixed  $id     location id or reference
+	 * @param string $action action to perform (view|edit|delete|map|map_on_earth)
+	 * @param string $name   optional anchor/reference
+	 * @return string a URL (absolute / canonical when possible)
 	 */
-	public static function get_url($id, $action='view', $name=NULL) {
-		global $context;
+	public static function get_url($id = 0, $action = 'view', $name = NULL) {
+	    global $context;
 
-		// check the target action
-		if(!preg_match('/^(delete|edit|map_on_earth|map_on_google|view)$/', $action))
-			return 'locations/'.$action.'.php?id='.urlencode($id).'&action='.urlencode($name);
+	    // map legacy action names to the new canonical actions
+	    if ($action === 'map_on_google')
+	        $action = 'map'; // legacy -> new name
 
-		// normalize the link
-		return normalize_url(array('locations', 'location'), $action, $id, $name);
+	    // allowed canonical actions handled by normalize_url
+	    $allowed = '/^(delete|edit|map_on_earth|map|view)$/';
+
+	    // if action is not in the canonical list, return a fallback direct script URL
+	    if (!preg_match($allowed, $action)) {
+	        // normalize id: prefer integer when possible
+	        if (is_numeric($id) && intval($id) == $id)
+	            $id_param = intval($id);
+	        else
+	            $id_param = urlencode($id);
+
+	        $anchor_param = $name ? '&anchor=' . urlencode($name) : '';
+
+	        // full path so the URL is usable from anywhere
+	        return $context['url_to_home'] . $context['url_to_root'] . 'locations/' . $action . '.php?id=' . $id_param . $anchor_param;
+	    }
+
+	    // canonical URL generation (preferred)
+	    return normalize_url(array('locations', 'location'), $action, $id, $name);
 	}
-
 	/**
 	 * list newest locations
 	 *
@@ -608,8 +628,8 @@ Class Locations {
 		$latitudes = $longitudes = 0.00;
 		$index = 0;
 		foreach($items as $id => $attributes) {
-			$latitudes += $attributes['latitude'];
-			$longitudes += $attributes['longitude'];
+			$latitudes += (float)$attributes['latitude'];
+			$longitudes += (float)$attributes['longitude'];
 			$index++;
 		}
 
@@ -680,6 +700,125 @@ Class Locations {
 		Page::insert_script($js_script);
 
 		// job done
+		return $text;
+	}
+	public static function map($items, $scale=null, $width=null, $height=null) {
+		if(defined('MAP_PROVIDER') && MAP_PROVIDER === 'leaflet')
+			return self::map_on_leaflet($items, $scale, $width, $height);
+		return self::map_on_google($items, $scale, $width, $height);
+	}
+
+	public static function map_on_leaflet($items, $scale=null, $width=null, $height=null) {
+		global $context;
+
+		// default values if not defined in skin
+		if(!isset($context['skins_gmap_default_width']))
+			$context['skins_gmap_default_width'] = '500px';
+		if(!isset($context['skins_gmap_default_height']))
+			$context['skins_gmap_default_height'] = '300px';
+		if(!isset($context['skins_gmap_default_scale']))
+			$context['skins_gmap_default_scale'] = '13';
+
+		if(!$scale)
+			$scale = $context['skins_gmap_default_scale'];
+		if(!$width)
+			$width = $context['skins_gmap_default_width'];
+		if(!$height)
+			$height = $context['skins_gmap_default_height'];
+
+		$text = '';
+
+		// load Leaflet assets once per page
+		static $leaflet_loaded;
+		if(!isset($leaflet_loaded)) {
+			$leaflet_loaded = TRUE;
+			Page::load_style($context['url_to_root'].'included/leaflet/leaflet.css');
+			$text .= '<script src="'.$context['url_to_root'].'included/leaflet/leaflet.js"></script>'."\n";
+		}
+
+		// unique handle per map on the page
+		static $map_index;
+		if(!isset($map_index)) {
+			$map_index = 0;
+			$handle = 'leaflet_map';
+		} else {
+			$map_index++;
+			$handle = 'leaflet_map_'.$map_index;
+		}
+
+		// map container
+		$text .= '<div id="'.$handle.'" style="border: 1px solid #979797; width: '.$width.'; height: '.$height.';"></div>'."\n";
+
+		// build markers array for JS
+		$js_markers = [];
+		foreach($items as $id => $item) {
+
+			// split coordinates if needed
+			if(!isset($item['latitude']) || !isset($item['longitude']) || !$item['latitude'])
+				@list($item['latitude'], $item['longitude']) = preg_split('/[\s,;]+/', $item['geo_position'] ?? '');
+
+			if(!$item['latitude'] || !$item['longitude'])
+				continue;
+
+			// popup content
+			$description = '';
+			if(isset($item['geo_place_name']) && $item['geo_place_name'])
+				$description .= strip_tags($item['geo_place_name']).'<br>';
+			if(isset($item['description']) && $item['description'])
+				$description .= Codes::beautify($item['description']);
+
+			if(isset($item['anchor']) && ($anchor = Anchors::get($item['anchor'])) && is_object($anchor)) {
+				if($icon_url = $anchor->get_thumbnail_url())
+					$description = Skin::build_link($anchor->get_url(), '<img src="'.encode_field($icon_url).'" alt="" style="float:left;margin-right:0.5em;border:none;max-width:60px;">', 'basic').$description;
+				$description .= '<br>'.Skin::build_link($anchor->get_url(), $anchor->get_title(), 'basic');
+			}
+
+			$js_markers[] = [
+				'lat'   => (float)$item['latitude'],
+				'lng'   => (float)$item['longitude'],
+				'popup' => $description,
+			];
+		}
+
+		$js_markers_json = json_encode($js_markers, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
+		$zoom = (int)$scale;
+
+		// center to use when there is no marker: the site position, else a world view
+		$default_center = '[0, 0]';
+		$default_zoom = 2;
+		if(isset($context['site_position']) && $context['site_position']) {
+			$pair = preg_split('/[\s,;]+/', trim($context['site_position']));
+			if((count($pair) == 2) && is_numeric($pair[0]) && is_numeric($pair[1])) {
+				$default_center = '['.(float)$pair[0].', '.(float)$pair[1].']';
+				$default_zoom = $zoom;
+			}
+		}
+
+		$js_script = <<<JS
+(function() {
+	var markers = {$js_markers_json};
+	var map = L.map('{$handle}');
+	L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+		attribution: '© <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors',
+		maxZoom: 19
+	}).addTo(map);
+	var bounds = [];
+	markers.forEach(function(m) {
+		var marker = L.marker([m.lat, m.lng]).addTo(map);
+		if (m.popup) marker.bindPopup(m.popup);
+		bounds.push([m.lat, m.lng]);
+	});
+	if (bounds.length === 0) {
+		map.setView({$default_center}, {$default_zoom});
+	} else if (bounds.length === 1) {
+		map.setView(bounds[0], {$zoom});
+	} else {
+		map.fitBounds(bounds, {padding: [20, 20]});
+	}
+})();
+JS;
+
+		Page::insert_script($js_script);
 		return $text;
 	}
 
