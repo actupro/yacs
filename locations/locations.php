@@ -808,13 +808,22 @@ Class Locations {
 		if (m.popup) marker.bindPopup(m.popup);
 		bounds.push([m.lat, m.lng]);
 	});
-	if (bounds.length === 0) {
-		map.setView({$default_center}, {$default_zoom});
-	} else if (bounds.length === 1) {
-		map.setView(bounds[0], {$zoom});
-	} else {
-		map.fitBounds(bounds, {padding: [20, 20]});
+	function applyView() {
+		if (bounds.length === 0) {
+			map.setView({$default_center}, {$default_zoom});
+		} else if (bounds.length === 1) {
+			map.setView(bounds[0], {$zoom});
+		} else {
+			map.fitBounds(bounds, {padding: [20, 20]});
+		}
 	}
+	applyView();
+	// container size may not be settled yet at init time (css grid, sibling
+	// images still loading): revalidate once layout has stabilized
+	setTimeout(function() {
+		map.invalidateSize();
+		applyView();
+	}, 200);
 })();
 JS;
 
