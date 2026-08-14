@@ -732,7 +732,13 @@ Class Locations {
 		static $leaflet_loaded;
 		if(!isset($leaflet_loaded)) {
 			$leaflet_loaded = TRUE;
-			Page::load_style($context['url_to_root'].'included/leaflet/leaflet.css');
+			// chemin nu obligatoire : Page::load_style() passe par Safe::realpath(),
+			// qui prend un chemin commençant par '/' -- ce que vaut url_to_root à la
+			// racine du site -- pour un chemin absolu du disque. Le fichier est alors
+			// introuvable et la feuille est abandonnée sans message, la carte
+			// s'affichant en tuiles empilées. Le préfixe reste correct pour la balise
+			// <script>, qui est une vraie URL.
+			Page::load_style('included/leaflet/leaflet.css');
 			$text .= '<script src="'.$context['url_to_root'].'included/leaflet/leaflet.js"></script>'."\n";
 		}
 
@@ -783,6 +789,15 @@ Class Locations {
 		$js_markers_json = json_encode($js_markers, JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT);
 		$zoom = (int)$scale;
 
+		// Leaflet devine ce chemin en lisant un background-image injecté par
+		// leaflet.css sur une div cachée -- ça fonctionne en général, mais le
+		// versionnement des feuilles de style de YACS (Js_css::set_revision(),
+		// qui ajoute ?date à leaflet.css) reste une source de fragilité possible.
+		// Le fixer explicitement retire ce doute une fois pour toutes : sans lui,
+		// des marqueurs sans icône sont invisibles, sans le moindre message
+		// d'erreur.
+		$icon_base = json_encode($context['url_to_root'].'included/leaflet/images/');
+
 		// center to use when there is no marker: the site position, else a world view
 		$default_center = '[0, 0]';
 		$default_zoom = 2;
@@ -796,6 +811,11 @@ Class Locations {
 
 		$js_script = <<<JS
 (function() {
+	L.Icon.Default.mergeOptions({
+		iconUrl: {$icon_base} + 'marker-icon.png',
+		iconRetinaUrl: {$icon_base} + 'marker-icon-2x.png',
+		shadowUrl: {$icon_base} + 'marker-shadow.png'
+	});
 	var markers = {$js_markers_json};
 	var map = L.map('{$handle}');
 	L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
