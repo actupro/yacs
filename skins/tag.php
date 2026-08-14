@@ -117,10 +117,10 @@ class tag {
             if(!$name) return $attribute;
             
             // do it
-            $attribute .= ' '.$name.'="'.addslashes($value).'"';
-            
+            $attribute .= ' '.$name.'="'.htmlspecialchars($value, ENT_QUOTES, 'UTF-8').'"';
+
             return $attribute;
-            
+
         }
         
         /**
@@ -141,8 +141,8 @@ class tag {
             if(!$name) return $attribute;
             
             // do it
-            $attribute .= ' data-'.$name.'="'.addslashes($value).'"';
-        
+            $attribute .= ' data-'.$name.'="'.htmlspecialchars($value, ENT_QUOTES, 'UTF-8').'"';
+
             return $attribute;
         }
     
