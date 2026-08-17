@@ -61,8 +61,8 @@ elseif($id == 'users')
 if(!is_object($anchor) && ($id != 'all') && ($id != 'users'))
 	Logger::error(i18n::s('Reference a valid anchor, or all users.'));
 
-// no capability to create an image
-elseif(!isset($context['google_api_key']) || !$context['google_api_key'])
+// no capability to create an image -- the Google engine requires an API key
+elseif((MAP_PROVIDER === 'google') && (!isset($context['google_api_key']) || !$context['google_api_key']))
 	Logger::error(i18n::s('Use the configuration panel for web services to enter your Google API key.'));
 
 // display the map
@@ -86,8 +86,7 @@ else {
 
 	}
 
-	// integrate with google maps
-	$context['text'] .= Locations::map_on_google($items, 2);
+	$context['text'] .= Locations::map($items, 2);
 
 	// insert anchor suffix
 	if(is_object($anchor))
